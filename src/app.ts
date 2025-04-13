@@ -1,13 +1,15 @@
-import express, { Express, Request, Response } from 'express'
+import express from 'express';
+import bodyParser from 'body-parser';
+import userRoute from './routes/user.route'
+import authRoute from './routes/auth.route'
 
-const app: Express = express()
+const app = express()
 
 const port: number = 3000
 
-app.get('/', (req: Request, res: Response) => {
-  res.json({
-    message: 'Hello Express + TypeScirpt!!'
-  })
-})
+app.use(bodyParser.json())
+
+app.use('/api/user', userRoute)
+app.use('/api/auth', authRoute)
 
 app.listen(port, () => console.log(`Application is running on port ${port}`))
