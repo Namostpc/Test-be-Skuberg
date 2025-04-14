@@ -1,5 +1,4 @@
 import { ICreateWallet } from "../../types/wallet/wallet.ctr";
-import jwt from 'jsonwebtoken'
 
 class CreateWallet implements ICreateWallet {
     public token: string;

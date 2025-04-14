@@ -1,5 +1,5 @@
-import { CreateWallet } from "../../models/index";
-import { ICreateWallet } from "../../types/wallet/wallet.ctr";
+import { CreateWallet, GetUserWallet } from "../../models/index";
+import { ICreateWallet, IGetUserWallet } from "../../types/wallet/wallet.ctr";
 import jwt from "jsonwebtoken";
 import db from "../../database/db";
 import moment from "moment-timezone";
@@ -10,7 +10,6 @@ class Wallet {
       req.body,
       req.headers.token
     );
-    console.log("reqInit ====", reqInit);
 
     if (!reqInit.token) {
       return {
@@ -32,7 +31,6 @@ class Wallet {
     }
 
     const tokenDecode = (await jwt.decode(reqInit.token)) as { id: number };
-    console.log("tokenDecode ===", tokenDecode.id);
 
     const {
       rows: [queryUser],
@@ -44,27 +42,21 @@ class Wallet {
         code: 400,
       };
     }
-
-    const { rows: queryWallet }: any = await db.raw(`
+    const {rows: [queryExistAccNo]}:any = await db.raw(`
     SELECT
-        u.user_id,
-        u.user_name,
-        u.user_email,
-        w.wallet_id,
-        w.wallet_number,
-        w.money_in_wallet
-    FROM users as u
-    INNER JOIN wallet as w ON w.wallet_user_id = u.user_id
-    WHERE u.user_id = ${queryUser.user_id} 
-    `);
+        *
+    FROM wallet
+    WHERE wallet_number = '${reqInit.wallet_number}'
+    LIMIT 1
+    `)
 
-    console.log("queryWallet ===", queryWallet);
-    if (queryWallet.length !== 0) {
+    if (queryExistAccNo) {
       return {
-        data: "This account already have wallet account",
+        data: "This account number has already created",
         code: 400,
       };
     }
+
 
     const currentDate = moment().format();
 
@@ -90,6 +82,70 @@ class Wallet {
       },
       code: 201,
     };
+  }
+
+
+  async getUserWallet(req: any) : Promise<any> {
+    const reqInit:IGetUserWallet = new GetUserWallet(req.headers.token)
+    console.log('reqInit ===', reqInit);
+
+    if(!reqInit.token){
+        return {
+            data: 'Parameter is incompleted',
+            code: 400
+        }
+    }
+
+    if(!reqInit.user_id) {
+        return {
+            data: 'Parameter is incompleted',
+            code: 400
+        }
+    }
+
+    const {rows: [queryUser]}:any = await db.raw(`
+    SELECT * FROM users WHERE user_id = ${reqInit.user_id} limit 1`)
+
+    if(!queryUser) {
+        return {
+            data: 'User Not Found',
+            code: 400
+        }
+    }
+
+    const {rows: [queryWallet]}:any = await db.raw(`
+    SELECT
+        wallet_id,
+        wallet_number,
+        created_at,
+        update_at
+    FROM wallet
+    WHERE wallet_user_id = ${reqInit.user_id} limit 1
+    `)
+
+    if(!queryWallet) {
+        return {
+            data: `Haven't create wallet yet`,
+            code: 400
+        }
+    }
+
+        const {rows: queryCoin}:any = await db.raw(`
+        SELECT
+            crypto_id,
+            crypto_amount,
+            crypto_type
+        FROM crypto_wallet
+        WHERE crypto_wallet_id = ${queryWallet.wallet_id}
+        `)
+
+    return {
+        data: {
+            wallet: queryWallet,
+            crypto: queryCoin.length !== 0? queryCoin : []},
+        code: 200
+    }
+    
   }
 }
 

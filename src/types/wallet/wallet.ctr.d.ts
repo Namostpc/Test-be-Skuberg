@@ -5,3 +5,9 @@ export interface ICreateWallet {
     wallet_number: string
     wallet_amount: number
 }
+
+export interface IGetUserWallet {
+    token: string
+    user_id: number | undefined
+    error: string | undefined
+}

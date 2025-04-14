@@ -127,6 +127,9 @@ class UserCtr {
       code: 200,
     };
   }
+
+
+  // getAlluser
 }
 
 const userController = new UserCtr();
