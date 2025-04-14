@@ -1,13 +1,15 @@
+// user
 import {CreateUser} from "./user/createuser.model";
 import {GetUserme} from './user/getuserme.model'
-
+// auth
 import { Authenlogin } from "./auth/auth.model";
-
+// wallet
 import {CreateWallet} from './wallet/createWallet.model'
 import { GetUserWallet } from "./wallet/getUserWallet.model";
-
-
+// coin
 import { CreateCoins } from "./crypto/crypto.model";
+// market
+import { SetsellMarket } from "./market/market.model";
 
 export {
     CreateUser,
@@ -15,5 +17,6 @@ export {
     Authenlogin,
     CreateWallet,
     GetUserWallet,
-    CreateCoins
+    CreateCoins,
+    SetsellMarket
 }
