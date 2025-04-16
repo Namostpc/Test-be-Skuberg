@@ -5,6 +5,7 @@ class SetsellMarket implements ISetsellmarket {
     public token: string;
     public user_id: number | undefined
     public type_of_coin: string;
+    public type_of_trading: string;
     public coin_amount: number;
 
 
@@ -12,6 +13,7 @@ class SetsellMarket implements ISetsellmarket {
         this.token = token
         this.type_of_coin = body.type_of_coin
         this.coin_amount = body.coin_amount
+        this.type_of_trading = body.type_of_trading
 
 
         const tokenDecode = jwt.decode(token) as {id: number}

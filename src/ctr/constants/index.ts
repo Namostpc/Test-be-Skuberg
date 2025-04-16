@@ -1,6 +1,3 @@
-import {COIN_TYPE} from './regex/regex'
+import { COIN_TYPE, TYPE_TRADING, CURRENCIES } from "./regex/regex";
 
-
-export {
-    COIN_TYPE
-}
+export { COIN_TYPE, TYPE_TRADING, CURRENCIES };

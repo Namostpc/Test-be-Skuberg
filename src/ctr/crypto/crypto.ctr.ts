@@ -98,7 +98,7 @@ class CryptoCoin {
             update_at
         )VALUES(
             '${reqInit.crypto_type}',
-            ${reqInit.crypto_amount},
+            ${(reqInit.crypto_amount).toFixed(8)},
             ${queryUserWallet.wallet_id},
             '${currentTime}',
             '${currentTime}'

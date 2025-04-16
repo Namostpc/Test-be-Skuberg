@@ -87,8 +87,6 @@ class Wallet {
 
   async getUserWallet(req: any) : Promise<any> {
     const reqInit:IGetUserWallet = new GetUserWallet(req.headers.token)
-    console.log('reqInit ===', reqInit);
-
     if(!reqInit.token){
         return {
             data: 'Parameter is incompleted',

@@ -1,6 +1,6 @@
 import { ISetsellmarket } from "../../types/market/market.ctr";
 import { SetsellMarket } from "../../models/index";
-import { COIN_TYPE } from "../constants/index";
+import { COIN_TYPE,TYPE_TRADING } from "../constants/index";
 import db from "../../database/db";
 import moment from 'moment-timezone'
 
@@ -10,8 +10,6 @@ class Setmarket {
       req.body,
       req.headers.token
     );
-
-    console.log("reqInit ===", reqInit);
 
     if (!reqInit.token) {
       return {
@@ -28,11 +26,19 @@ class Setmarket {
     }
 
     const regexTest = COIN_TYPE.test(reqInit.type_of_coin);
+    const regexTypeTest = TYPE_TRADING.test(reqInit.type_of_trading)
     if (regexTest === false) {
       return {
         data: "Parameter type_of_coin is invalid",
         code: 401,
       };
+    }
+
+    if(regexTypeTest === false) {
+        return {
+            data: "Parameter type_of_trading is invalid",
+            code: 401
+        }
     }
 
     if(reqInit.coin_amount !== Number(reqInit.coin_amount) || reqInit.coin_amount === 0) {
@@ -46,6 +52,7 @@ class Setmarket {
     const strError = [];
 
     if (!reqInit.type_of_coin) strError.push(`type_of_coin`);
+    if (!reqInit.type_of_trading) strError.push(`type_of_trading`)
     if (!reqInit.coin_amount) strError.push(`coin_amount`);
 
     if (strError.length > 0) {
@@ -90,13 +97,13 @@ class Setmarket {
         }
     }
 
-    // query for duplicated of coin sell in the market
+    // query for duplicated of coin sell/ buy in the market
     const {rows: [queryMarket]}:any = await db.raw(`
     SELECT
         trader,
         type_of_coin
     FROM market_place
-    WHERE trader = ${queryUser.user_id} AND type_of_coin = '${reqInit.type_of_coin}'
+    WHERE trader = ${queryUser.user_id} AND type_of_coin = '${reqInit.type_of_coin}' AND type_of_trading = '${reqInit.type_of_trading}'
     limit 1 
     `)
 
@@ -126,32 +133,36 @@ class Setmarket {
         price_us,
         created_at,
         updated_at,
-        coin_amount
+        coin_amount,
+        payment
     )VALUES(
         '${reqInit.type_of_coin}',
-        'SELL',
+        '${reqInit.type_of_trading}',
         ${queryUser.user_id},
         ${reqInit.type_of_coin === 'BTC' ? (btc_coin_price * reqInit.coin_amount).toFixed(2): 
         reqInit.type_of_coin === 'ETC' ? (etc_coin_price * reqInit.coin_amount).toFixed(2):
         reqInit.type_of_coin === 'XRP' ? (xrp_coin_price * reqInit.coin_amount).toFixed(2):
         reqInit.type_of_coin === 'DOGE' ? (doge_coin_price * reqInit.coin_amount).toFixed(2): ''},
         ${reqInit.type_of_coin === 'BTC' ? ((btc_coin_price * reqInit.coin_amount)/us_exchange).toFixed(2): 
-        reqInit.type_of_coin === 'ETC' ? ((etc_coin_price * reqInit.coin_amount)/us_exchange).toFixed(2):
+        reqInit.type_of_coin === 'ETC' ? ((etc_coin_price * reqInit.coin_amount/us_exchange)).toFixed(2):
         reqInit.type_of_coin === 'XRP' ? ((xrp_coin_price * reqInit.coin_amount)/us_exchange).toFixed(2):
         reqInit.type_of_coin === 'DOGE' ? ((doge_coin_price * reqInit.coin_amount)/us_exchange).toFixed(2): ''},
         '${currentTime}',
         '${currentTime}',
-        ${reqInit.coin_amount}
+        ${reqInit.coin_amount},
+        'Bank Transfer'
     )RETURNING marketplace_id
     `)
-
-    console.log('insertData ===', insertData);
     
-    await db.raw(`
-    UPDATE crypto_wallet SET
-        crypto_amount = ${queryDataCoin.crypto_amount - reqInit.coin_amount}
-    WHERE crypto_id = ${queryDataCoin.crypto_id}
-    `)
+    if(reqInit.type_of_trading === 'SELL'){
+        await db.raw(`
+        UPDATE crypto_wallet SET
+            crypto_amount = ${queryDataCoin.crypto_amount - reqInit.coin_amount},
+            update_at = '${currentTime}'
+        WHERE crypto_id = ${queryDataCoin.crypto_id}
+        `)
+    }
+    
 
     return {
       data: {
