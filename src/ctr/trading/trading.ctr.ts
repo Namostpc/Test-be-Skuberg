@@ -142,6 +142,8 @@ class TradingCtr {
             limit 1
             `);
 
+    console.log("checkCoin ===", checkCoin);
+
     // amount of coin * currency
     const checkamout_money =
       queryMarket.type_of_coin === "BTC"
@@ -154,7 +156,7 @@ class TradingCtr {
         ? (doge_coin_price * reqInit.coin_amount).toFixed(2)
         : 0;
 
-    let transaction_id = 0
+    let transactionId = 0;
 
     const currentTime = moment().format();
     if (queryMarket.type_of_trading === "SELL") {
@@ -191,6 +193,11 @@ class TradingCtr {
       )RETURNING transaction_id
       `);
 
+      transactionId = recordTransaction.transaction_id
+
+      console.log('recordTransaction ==', recordTransaction);
+      
+
       // update myself wallet in THB
       await db.raw(`
         UPDATE wallet SET
@@ -222,10 +229,9 @@ class TradingCtr {
             '${currentTime}',
             '${currentTime}'
         )RETURNING crypto_id`);
-      }
-
-      // update myself crypto coin (in case of already have crypto coin)
-      await db.raw(`
+      } else {
+        // update myself crypto coin (in case of already have crypto coin)
+        await db.raw(`
       UPDATE crypto_wallet SET
         crypto_amount = ${checkCoin.crypto_amount + reqInit.coin_amount},
         update_at = '${currentTime}'
@@ -233,6 +239,7 @@ class TradingCtr {
         queryUserWallet.wallet_id
       } AND crypto_type = '${checkCoin.crypto_type}'
       `);
+      }
 
       // update recipient wallet
       await db.raw(`
@@ -241,7 +248,8 @@ class TradingCtr {
           reqInit.currency === "THB"
             ? Number(checkamout_money) + queryRecipientData.money_in_wallet
             : reqInit.currency === "USD"
-            ? ((Number(checkamout_money) / us_exchange) + (queryRecipientData.money_in_wallet/us_exchange)) *
+            ? (Number(checkamout_money) / us_exchange +
+                queryRecipientData.money_in_wallet / us_exchange) *
               us_exchange
             : 0
         },
@@ -267,6 +275,13 @@ class TradingCtr {
       if (queryRecipientData.money_in_wallet < checkamout_money) {
         return {
           data: "Can not do this trasaction",
+          code: 400,
+        };
+      }
+
+      if (!checkCoin) {
+        return {
+          data: "No coin in your wallet",
           code: 400,
         };
       }
@@ -304,7 +319,8 @@ class TradingCtr {
           )RETURNING transaction_id
           `);
 
-      transaction_id = recordTransaction
+      transactionId = recordTransaction.transaction_id;
+      
       // update myself wallet
       await db.raw(`
       UPDATE wallet SET
@@ -336,17 +352,17 @@ class TradingCtr {
             '${currentTime}',
             '${currentTime}'
         )RETURNING crypto_id`);
+      } else {
+        // update myself crypto coin (in case of already have crypto coin)
+        await db.raw(`
+        UPDATE crypto_wallet SET
+            crypto_amount = ${checkCoin.crypto_amount - reqInit.coin_amount},
+            update_at = '${currentTime}'
+        WHERE crypto_wallet_id = ${
+          queryUserWallet.wallet_id
+        } AND crypto_type = '${checkCoin.crypto_type}'
+        `);
       }
-
-      // update myself crypto coin (in case of already have crypto coin)
-      await db.raw(`
-      UPDATE crypto_wallet SET
-        crypto_amount = ${checkCoin.crypto_amount - reqInit.coin_amount},
-        update_at = '${currentTime}'
-      WHERE crypto_wallet_id = ${
-        queryUserWallet.wallet_id
-      } AND crypto_type = '${checkCoin.crypto_type}'
-      `);
 
       // update recipient wallet
       await db.raw(`
@@ -355,7 +371,9 @@ class TradingCtr {
           reqInit.currency === "THB"
             ? queryRecipientData.money_in_wallet - Number(checkamout_money)
             : reqInit.currency === "USD"
-            ? ((queryRecipientData.money_in_wallet / us_exchange) - (Number(checkamout_money) / us_exchange)) * us_exchange
+            ? (queryRecipientData.money_in_wallet / us_exchange -
+                Number(checkamout_money) / us_exchange) *
+              us_exchange
             : 0
         },
         update_at = '${currentTime}'
@@ -375,11 +393,14 @@ class TradingCtr {
       `);
     }
 
+    // check and update market
     if (queryMarket.coin_amount - reqInit.coin_amount === 0) {
       await db.raw(`
         DELETE FROM market_place WHERE marketplace_id = ${reqInit.market_id}
         `);
     } else {
+      console.log("error here?");
+
       await db.raw(`
         UPDATE market_place SET
           coin_amount = ${queryMarket.coin_amount - reqInit.coin_amount},
@@ -410,10 +431,13 @@ class TradingCtr {
         `);
     }
 
+    console.log('transaction_id ===', transactionId);
+    
+
     return {
       data: {
-        transaction_id : transaction_id,
-        message: 'Transaction Successful'
+        transaction_id: transactionId,
+        message: "Transaction Successful",
       },
       code: 200,
     };
